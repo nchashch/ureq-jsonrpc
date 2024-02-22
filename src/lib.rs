@@ -16,7 +16,7 @@ impl Client {
         &self,
         method: &str,
         params: &[ureq::serde_json::Value],
-    ) -> Result<T, Error> {
+    ) -> Result<Option<T>, Error> {
         let auth = format!("{}:{}", self.user, self.password);
         let resp = ureq::post(format!("http://{}:{}", self.host, self.port).as_str())
             .set("host", format!("{}:{}", self.host, self.port).as_str())
@@ -34,9 +34,9 @@ impl Client {
             ))?;
         let result: JsonRpcResult<T> = resp.into_json()?;
         match (result.result, result.error) {
-            (Some(value), None) => Ok(value),
-            (None, Some(error)) => Err(error.into()),
-            _ => Err(Error::JsonRpc),
+            (Some(value), None) => Ok(Some(value)),
+            (None, None) => Ok(None),
+            (_, Some(error)) => Err(error.into()),
         }
     }
 }
@@ -45,6 +45,7 @@ impl Client {
 struct JsonRpcResult<T> {
     pub result: Option<T>,
     pub error: Option<RpcError>,
+    pub id: String,
 }
 
 #[derive(thiserror::Error, Debug, Diagnostic, serde::Serialize, serde::Deserialize)]
